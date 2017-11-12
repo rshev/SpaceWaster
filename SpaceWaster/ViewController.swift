@@ -12,13 +12,15 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var freeSpaceLabel: UILabel! {
         didSet {
+            let freeSpaceLabelTemplate = freeSpaceLabel.text ?? "%@\n%@\n%@\n%@"
             Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                self?.freeSpaceLabel.text = """
-                FileManager System Free Size: \(Disk.fileManagerSystemFreeSize ?? "?")
-                URL Volume Available Capacity: \(Disk.urlVolumeAvailableCapacity ?? "?")
-                ... for Important Usage: \(Disk.urlVolumeAvailableCapacityForImportantUsage ?? "?")
-                ... for Opportunistic Usage: \(Disk.urlVolumeAvailableCapacityForOpportunisticUsage ?? "?")
-                """
+                self?.freeSpaceLabel.text = String(
+                    format: freeSpaceLabelTemplate,
+                    Disk.documentsDirectorySize ?? "?",
+                    Disk.urlVolumeAvailableCapacity ?? "?",
+                    Disk.urlVolumeAvailableCapacityForImportantUsage ?? "?",
+                    Disk.urlVolumeAvailableCapacityForOpportunisticUsage ?? "?"
+                )
             }
         }
     }
@@ -29,16 +31,8 @@ class ViewController: UIViewController {
         view.endEditing(true)
     }
 
-    private var documentsDirectory: String {
-        return "\(NSHomeDirectory())/Documents"
-    }
-
-    private var documentsDirectoryUrl: URL {
-        return URL.init(fileURLWithPath: documentsDirectory, isDirectory: true)
-    }
-
     @IBAction func didTapWasteSpaceButton() {
-        let fileUrl = documentsDirectoryUrl.appendingPathComponent(UUID().uuidString, isDirectory: false)
+        let fileUrl = Disk.documentsDirectoryUrl.appendingPathComponent(UUID().uuidString, isDirectory: false)
 
         guard
             let mbytesText = mbytesTextField.text,
@@ -48,7 +42,7 @@ class ViewController: UIViewController {
             return
         }
 
-        let bytesInMbyte = 1_048_576
+        let bytesInMbyte = 1_000_000
         let buffer = [UInt8].init(repeating: 0x00, count: bytesInMbyte)
 
         spinnerView.startAnimating()
@@ -82,11 +76,6 @@ class ViewController: UIViewController {
     }
 
     @IBAction func didTapResetSandboxButton() {
-        do {
-            try FileManager.default.contentsOfDirectory(at: documentsDirectoryUrl, includingPropertiesForKeys: nil).forEach({
-                try FileManager.default.removeItem(at: $0)
-            })
-        }
-        catch {}
+        Disk.clearDocumentsDirectory()
     }
 }

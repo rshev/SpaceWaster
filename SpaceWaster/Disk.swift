@@ -9,22 +9,41 @@
 import Foundation
 
 enum Disk {
-
-    static var fileManagerSystemFreeSize: String? {
-        guard
-            let attributes = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
-            let freeSpaceSize = attributes[FileAttributeKey.systemFreeSize] as? Int64
-        else {
-            return nil
-        }
-
-        return freeSpaceSize.formattedAsDiskSpace
+    private static var documentsDirectory: String {
+        return "\(NSHomeDirectory())/Documents"
     }
 
-    private static var urlResourceValues: URLResourceValues? {
-        let url = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+    static var documentsDirectoryUrl: URL {
+        return URL(fileURLWithPath: documentsDirectory, isDirectory: true)
+    }
+
+    static var documentsDirectorySize: String? {
+        do {
+            return try FileManager.default
+                .contentsOfDirectory(at: Disk.documentsDirectoryUrl, includingPropertiesForKeys: nil)
+                .reduce(0, {
+                    $0 + (urlResourceValues(url: $1)?.fileSize ?? 0)
+                })
+                .formattedAsDiskSpace
+        }
+        catch {
+            return nil
+        }
+    }
+
+    static func clearDocumentsDirectory() {
+        do {
+            try FileManager.default.contentsOfDirectory(at: Disk.documentsDirectoryUrl, includingPropertiesForKeys: nil).forEach({
+                try FileManager.default.removeItem(at: $0)
+            })
+        }
+        catch {}
+    }
+
+    private static func urlResourceValues(url: URL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)) -> URLResourceValues? {
         do {
             let values = try url.resourceValues(forKeys: [
+                .fileSizeKey,
                 .volumeAvailableCapacityKey,
                 .volumeAvailableCapacityForImportantUsageKey,
                 .volumeAvailableCapacityForOpportunisticUsageKey,
@@ -36,15 +55,15 @@ enum Disk {
     }
 
     static var urlVolumeAvailableCapacity: String? {
-        return urlResourceValues?.volumeAvailableCapacity?.formattedAsDiskSpace
+        return urlResourceValues()?.volumeAvailableCapacity?.formattedAsDiskSpace
     }
 
     static var urlVolumeAvailableCapacityForImportantUsage: String? {
-        return urlResourceValues?.volumeAvailableCapacityForImportantUsage?.formattedAsDiskSpace
+        return urlResourceValues()?.volumeAvailableCapacityForImportantUsage?.formattedAsDiskSpace
     }
 
     static var urlVolumeAvailableCapacityForOpportunisticUsage: String? {
-        return urlResourceValues?.volumeAvailableCapacityForOpportunisticUsage?.formattedAsDiskSpace
+        return urlResourceValues()?.volumeAvailableCapacityForOpportunisticUsage?.formattedAsDiskSpace
     }
 }
 
